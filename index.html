@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Monstre gourmand de mots - TBI 16/9</title>
+    <!-- Bibliothèque pour la lecture des fichiers Excel (.xlsx) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Bibliothèque pour l'effet de cotillons / confettis -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Open+Sans:wght@700&display=swap');
+
+        :root {
+            --font-active: 'Fredoka', 'Open Sans', sans-serif;
+            --primary-color: #2c3e50;
+            --bg-color: #eef7f6;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-active);
+            background: linear-gradient(180deg, #d4efdf 0%, #eef7f6 100%);
+            margin: 0;
+            padding: 10px 20px;
+            text-align: center;
+            user-select: none;
+            -webkit-user-select: none;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            overflow: hidden;
+        }
+
+        header {
+            position: absolute;
+            top: 12px;
+            left: 20px;
+            text-align: left;
+        }
+
+        header h1 {
+            color: #1e8449;
+            margin: 0;
+            font-size: 1.5rem;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .niveau-badge {
+            background: #27ae60;
+            color: white;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            display: inline-block;
+            font-weight: bold;
+        }
+
+        .btn-teacher-toggle {
+            position: absolute;
+            top: 12px;
+            right: 20px;
+            background: #34495e;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-family: inherit;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+
+        .teacher-panel {
+            display: none;
+            position: fixed;
+            top: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            max-width: 900px;
+            max-height: 85vh;
+            overflow-y: auto;
+            background: #ffffff;
+            border: 4px solid #1abc9c;
+            border-radius: 25px;
+            padding: 20px;
+            text-align: left;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+            z-index: 1001;
+        }
+
+        .teacher-panel.active {
+            display: block;
+        }
+
+        .teacher-panel h2 {
+            margin-top: 0;
+            color: #16a085;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #e8f8f5;
+            padding-bottom: 8px;
+        }
+
+        .teacher-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .teacher-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .btn-panel {
+            background: #1abc9c;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+            font-size: 0.85rem;
+            margin: 3px 1px;
+        }
+        .btn-panel.btn-success { background: #27ae60; }
+        .btn-panel.btn-danger { background: #e74c3c; }
+
+        select, input[type="text"], input[type="number"] {
+            font-family: inherit;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .table-container {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        .table-editor {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .table-editor th {
+            background: #e8f8f5;
+            color: #16a085;
+            padding: 6px;
+            font-size: 0.8rem;
+            position: sticky;
+            top: 0;
+        }
+
+        .table-editor td {
+            padding: 4px;
+            border-bottom: 1px solid #f1f3f5;
+        }
+
+        /* --- Interface Élève (Largeur 16/9) --- */
+        .game-container {
+            width: 95%;
+            max-width: 1200px;
+            margin: 0 auto 10px auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 40px;
+            border-radius: 40px;
+            box-shadow: 0 12px 35px rgba(39, 174, 96, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 4px solid #abebc6;
+            position: relative;
+        }
+
+        .top-action-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1000px;
+            margin-bottom: 10px;
+        }
+
+        .consigne-audio {
+            background: #f39c12;
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 1.8rem;
+            font-family: var(--font-active);
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #d35400;
+            transition: transform 0.1s, box-shadow 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .consigne-audio:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #d35400;
+        }
+
+        .progress-bar {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #27ae60;
+            background: #e8f8f5;
+            padding: 10px 28px;
+            border-radius: 25px;
+            border: 2px solid #a3e4d7;
+        }
+
+        .monstre-box {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 5px auto;
+            background: radial-gradient(circle, #ffffff 0%, #d4efdf 100%);
+            border: 6px dashed #27ae60;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, background 0.2s, border-color 0.2s;
+        }
+
+        .monstre-box.hovered {
+            background: radial-gradient(circle, #e8f8f5 0%, #52be80 100%);
+            border-color: #1e8449;
+            transform: scale(1.1);
+        }
+
+        .monstre-svg {
+            width: 200px;
+            height: 200px;
+            transition: transform 0.2s;
+        }
+
+        #feedback {
+            margin-top: 5px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            min-height: 45px;
+        }
+
+        .mots-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 30px;
+            margin-top: 15px;
+            width: 100%;
+            max-width: 1100px;
+            min-height: 100px;
+        }
+
+        .etiquette {
+            background: #fff3cd;
+            border: 4px solid #f1c40f;
+            padding: 18px 42px;
+            border-radius: 25px;
+            font-size: 2.5rem;
+            font-family: var(--font-active);
+            font-weight: 700;
+            color: #1a252f;
+            cursor: grab;
+            box-shadow: 0 8px 0 #f39c12, 0 10px 18px rgba(0,0,0,0.12);
+            transition: transform 0.15s, background 0.2s;
+            touch-action: none;
+            position: relative;
+            z-index: 10;
+        }
+
+        .etiquette:active { cursor: grabbing; }
+
+        .etiquette.dragging {
+            opacity: 0.85;
+            transform: scale(1.1);
+            z-index: 100;
+        }
+
+        .etiquette.correct {
+            background: #2ecc71 !important;
+            border-color: #1e8449 !important;
+            color: white !important;
+            box-shadow: 0 8px 0 #145a32 !important;
+        }
+
+        .etiquette.incorrect {
+            animation: shake 0.4s ease-in-out;
+            background: #e74c3c !important;
+            border-color: #922b21 !important;
+            color: white !important;
+            box-shadow: 0 8px 0 #641e16 !important;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-12px); }
+            40%, 80% { transform: translateX(12px); }
+        }
+
+        .btn-suivant {
+            display: none;
+            margin-top: 10px;
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            font-size: 1.5rem;
+            font-family: var(--font-active);
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #1f618d;
+        }
+
+        .btn-suivant:active {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0 #1f618d;
+        }
+    </style>
+</head>
+<body>
+
+    <button class="btn-teacher-toggle" onclick="toggleTeacherPanel()">⚙️ Enseignant</button>
+
+    <header>
+        <h1>Le Monstre gourmand</h1>
+        <div class="niveau-badge">Cycle 1</div>
+    </header>
+
+    <!-- Panneau Enseignant -->
+    <div class="teacher-panel" id="teacherPanel">
+        <h2>🛠️ Espace Enseignant : Configuration</h2>
+        
+        <div class="teacher-grid">
+            <div class="teacher-card">
+                <h3>🔤 Police d'écriture</h3>
+                <select id="selectPolice" onchange="changerPolice()">
+                    <option value="Script" selected>Script / Minuscules</option>
+                    <option value="MAJUSCULE">CAPITALES / MAJUSCULES</option>
+                </select>
+            </div>
+
+            <div class="teacher-card">
+                <h3>🎯 Réglage de la partie</h3>
+                <label for="nbQuestionsInput" style="font-size: 0.8rem; color: #555;">Mots par session :</label>
+                <input type="number" id="nbQuestionsInput" min="1" max="100" value="5" onchange="sauvegarderParametres()">
+            </div>
+
+            <div class="teacher-card">
+                <h3>📂 Import / Export</h3>
+                <input type="file" id="fileInput" accept=".json, .xlsx, .xls" style="display: none;" onchange="chargerFichier(event)">
+                <button class="btn-panel" onclick="document.getElementById('fileInput').click()">📂 Importer</button>
+                <button class="btn-panel" onclick="exporterJSON()">💾 Exporter</button>
+                <button class="btn-panel" onclick="telechargerModeleExcel()">📄 Modèle Excel</button>
+                <button class="btn-panel btn-danger" onclick="reinitialiserMotsParDefaut()">🔄 Réinitialiser</button>
+            </div>
+        </div>
+
+        <div class="teacher-card">
+            <h3>📝 Éditeur de mots (<span id="totalMotsCompteur">0</span> en mémoire)</h3>
+            <div class="table-container">
+                <table class="table-editor">
+                    <thead>
+                        <tr>
+                            <th>Bonne réponse</th>
+                            <th>Piège 1</th>
+                            <th>Piège 2</th>
+                            <th>Énonciation (Optionnelle si mal lu)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyMots"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 10px; text-align: right;">
+                <button class="btn-panel" onclick="ajouterLigneMot()">➕ Ajouter un mot</button>
+                <button class="btn-panel btn-success" onclick="sauvegarderMotsEditeur()">✅ Enregistrer & Lancer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface Élève -->
+    <div class="game-container">
+        
+        <div class="top-action-bar">
+            <button class="consigne-audio" onclick="jouerConsigne()">🔊 réécouter</button>
+            <div class="progress-bar" id="score">0 / 0</div>
+        </div>
+
+        <!-- Monstre Cible -->
+        <div class="monstre-box" id="monstre" 
+             ondragover="permettreDepot(event)" 
+             ondragleave="retirerSurbrillance()" 
+             ondrop="deposerMot(event)">
+            
+            <svg class="monstre-svg" viewBox="0 0 200 200" id="svgMonstre">
+                <defs>
+                    <radialGradient id="bodyGrad" cx="30%" cy="30%" r="70%">
+                        <stop offset="0%" stop-color="#58d68d" />
+                        <stop offset="70%" stop-color="#28b463" />
+                        <stop offset="100%" stop-color="#1e8449" />
+                    </radialGradient>
+                    <radialGradient id="eyeGrad" cx="30%" cy="30%" r="70%">
+                        <stop offset="0%" stop-color="#ffffff" />
+                        <stop offset="80%" stop-color="#e5e7e9" />
+                    </radialGradient>
+                    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                        <feDropShadow dx="0" dy="6" stdDeviation="4" flood-opacity="0.15"/>
+                    </filter>
+                </defs>
+
+                <ellipse cx="100" cy="180" rx="65" ry="12" fill="#000" opacity="0.12" />
+
+                <path d="M 40,110 C 30,50 70,25 100,25 C 130,25 170,50 160,110 C 155,160 140,175 100,175 C 60,175 45,160 40,110 Z" 
+                      fill="url(#bodyGrad)" filter="url(#shadow)" />
+
+                <path d="M 85,26 C 80,10 90,8 92,23 Z" fill="#f1c40f" />
+                <path d="M 115,26 C 120,10 110,8 108,23 Z" fill="#f1c40f" />
+
+                <g id="yeux">
+                    <circle cx="75" cy="70" r="22" fill="url(#eyeGrad)" stroke="#27ae60" stroke-width="2"/>
+                    <circle cx="78" cy="72" r="10" fill="#2c3e50" />
+                    <circle cx="82" cy="68" r="4" fill="#ffffff" />
+
+                    <circle cx="125" cy="70" r="22" fill="url(#eyeGrad)" stroke="#27ae60" stroke-width="2"/>
+                    <circle cx="122" cy="72" r="10" fill="#2c3e50" />
+                    <circle cx="126" cy="68" r="4" fill="#ffffff" />
+                </g>
+
+                <path id="bouche" d="M 65,125 Q 100,155 135,125 Q 100,135 65,125 Z" fill="#78281f" />
+                <path d="M 80,127 L 85,134 L 90,128 Z" fill="#ffffff" />
+                <path d="M 110,128 L 115,134 L 120,127 Z" fill="#ffffff" />
+
+                <circle cx="52" cy="110" r="10" fill="#ec7063" opacity="0.4" />
+                <circle cx="148" cy="110" r="10" fill="#ec7063" opacity="0.4" />
+            </svg>
+        </div>
+
+        <div id="feedback"></div>
+
+        <div class="mots-container" id="container-mots"></div>
+
+        <button class="btn-suivant" id="btnSuivant" onclick="chargerNiveau()">Mot suivant ➡️</button>
+    </div>
+
+    <script>
+        const motsParDefaut = [
+            { cible: "Chat", audioText: "", options: ["Chat", "Vélo", "Lune"] },
+            { cible: "Pain", audioText: "", options: ["Pain", "Lait", "Eau"] },
+            { cible: "Loup", audioText: "", options: ["Loup", "Souris", "Chat"] },
+            { cible: "Oiseau", audioText: "Wa zo", options: ["Oiseau", "Nuage", "Pluie"] },
+            { cible: "Papa", audioText: "", options: ["Papa", "Maman", "Bébé"] }
+        ];
+
+        let banqueMots = [];
+        let sessionJeu = [];
+        let niveauActuel = 0;
+        let score = 0;
+        let tentativeReussie = false;
+        let nbQuestionsSouhaitees = 5;
+
+        const synth = window.speechSynthesis;
+
+        // --- ALGORITHME DE MÉLANGE ALEATOIRE (FISHER-YATES) ---
+        function melangerTableau(arr) {
+            let copie = [...arr];
+            for (let i = copie.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copie[i], copie[j]] = [copie[j], copie[i]];
+            }
+            return copie;
+        }
+
+        function initialiserDonnees() {
+            const motsSauvegardes = localStorage.getItem('monstreGourmand_mots');
+            if (motsSauvegardes) {
+                try {
+                    banqueMots = JSON.parse(motsSauvegardes);
+                } catch(e) {
+                    banqueMots = [...motsParDefaut];
+                }
+            } else {
+                banqueMots = [...motsParDefaut];
+            }
+
+            const paramQuestions = localStorage.getItem('monstreGourmand_nbQuestions');
+            if (paramQuestions) {
+                nbQuestionsSouhaitees = parseInt(paramQuestions, 10) || 5;
+            } else {
+                nbQuestionsSouhaitees = 5;
+            }
+            document.getElementById('nbQuestionsInput').value = nbQuestionsSouhaitees;
+
+            preparerSessionJeu();
+        }
+
+        function sauvegarderEnMemoire() {
+            localStorage.setItem('monstreGourmand_mots', JSON.stringify(banqueMots));
+            localStorage.setItem('monstreGourmand_nbQuestions', nbQuestionsSouhaitees);
+        }
+
+        function reinitialiserMotsParDefaut() {
+            if (confirm("Réinitialiser avec la liste de mots par défaut ?")) {
+                banqueMots = [...motsParDefaut];
+                sauvegarderEnMemoire();
+                remplirTableauEditeur();
+                preparerSessionJeu();
+            }
+        }
+
+        function preparerSessionJeu() {
+            if (banqueMots.length === 0) return;
+            let motsMelanges = melangerTableau(banqueMots);
+            sessionJeu = motsMelanges.slice(0, Math.min(nbQuestionsSouhaitees, banqueMots.length));
+            niveauActuel = 0;
+            score = 0;
+            chargerNiveau();
+        }
+
+        // --- ÉNONCIATION AUDIO ---
+        function jouerConsigne() {
+            if (sessionJeu.length > 0 && niveauActuel < sessionJeu.length) {
+                const currentData = sessionJeu[niveauActuel];
+
+                if (synth.speaking) synth.cancel();
+
+                const texteAPrononcer = (currentData.audioText && currentData.audioText.trim() !== "") 
+                                        ? currentData.audioText.trim() 
+                                        : currentData.cible;
+
+                const utterance = new SpeechSynthesisUtterance(texteAPrononcer);
+                utterance.lang = 'fr-CH';
+                utterance.rate = 0.8;
+                synth.speak(utterance);
+            }
+        }
+
+        function chargerNiveau() {
+            tentativeReussie = false;
+            document.getElementById('btnSuivant').style.display = 'none';
+            document.getElementById('feedback').innerText = '';
+            
+            document.getElementById('bouche').setAttribute('d', 'M 65,125 Q 100,155 135,125 Q 100,135 65,125 Z');
+
+            if (niveauActuel >= sessionJeu.length) {
+                document.querySelector('.game-container').innerHTML = `
+                    <h2 style="font-size: 2.5rem; color:#27ae60; margin:10px 0;">🎉 Bravo !</h2>
+                    <p style="font-size: 1.5rem;">Tu as nourri le monstre avec tous les mots !</p>
+                    <button class="consigne-audio" onclick="location.reload()">Recommencer 🔄</button>
+                `;
+                lancerCotillons();
+                return;
+            }
+
+            const currentData = sessionJeu[niveauActuel];
+            
+            // Mélange strict et systématique des options à chaque niveau
+            let optionsMelangees = melangerTableau(currentData.options);
+
+            const containerMots = document.getElementById('container-mots');
+            containerMots.innerHTML = '';
+
+            optionsMelangees.forEach(mot => {
+                let div = document.createElement('div');
+                div.className = 'etiquette';
+                div.draggable = true;
+                div.innerText = formatterMotSelonPolice(mot);
+                div.dataset.motBrut = mot;
+
+                div.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', mot);
+                    div.classList.add('dragging');
+                });
+
+                div.addEventListener('dragend', () => {
+                    div.classList.remove('dragging');
+                });
+
+                rendreElementGlissableTactile(div, mot);
+
+                containerMots.appendChild(div);
+            });
+
+            document.getElementById('score').innerText = `${niveauActuel + 1} / ${sessionJeu.length}`;
+
+            setTimeout(() => {
+                jouerConsigne();
+            }, 300);
+        }
+
+        function rendreElementGlissableTactile(element, mot) {
+            let startX = 0, startY = 0;
+
+            element.addEventListener('touchstart', (e) => {
+                if (tentativeReussie) return;
+                const touch = e.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
+                element.classList.add('dragging');
+            }, { passive: true });
+
+            element.addEventListener('touchmove', (e) => {
+                if (tentativeReussie) return;
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - startX;
+                const deltaY = touch.clientY - startY;
+
+                element.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+                const monstreRect = document.getElementById('monstre').getBoundingClientRect();
+                if (touch.clientX >= monstreRect.left && touch.clientX <= monstreRect.right &&
+                    touch.clientY >= monstreRect.top && touch.clientY <= monstreRect.bottom) {
+                    permettreDepotVisual();
+                } else {
+                    retirerSurbrillanceVisual();
+                }
+            }, { passive: true });
+
+            element.addEventListener('touchend', (e) => {
+                if (tentativeReussie) return;
+                element.classList.remove('dragging');
+
+                const touch = e.changedTouches[0];
+                const monstreRect = document.getElementById('monstre').getBoundingClientRect();
+
+                if (touch.clientX >= monstreRect.left && touch.clientX <= monstreRect.right &&
+                    touch.clientY >= monstreRect.top && touch.clientY <= monstreRect.bottom) {
+                    element.style.transform = 'none';
+                    verifierMot(mot, element);
+                } else {
+                    element.style.transform = 'none';
+                    retirerSurbrillanceVisual();
+                }
+            });
+        }
+
+        function lancerCotillons() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function verifierMot(motSelectionne, elementEtiquette = null) {
+            if (tentativeReussie) return;
+
+            const currentData = sessionJeu[niveauActuel];
+            const feedback = document.getElementById('feedback');
+
+            if (motSelectionne === currentData.cible) {
+                tentativeReussie = true;
+                score++;
+                
+                if (elementEtiquette) {
+                    elementEtiquette.classList.add('correct');
+                }
+
+                document.getElementById('bouche').setAttribute('d', 'M 60,115 Q 100,175 140,115 Q 100,125 60,115 Z');
+
+                feedback.style.color = "#27ae60";
+                feedback.innerText = "🎉 Miam ! Bon mot !";
+
+                lancerCotillons();
+
+                document.getElementById('btnSuivant').style.display = 'inline-block';
+                niveauActuel++;
+            } else {
+                feedback.style.color = "#c0392b";
+                feedback.innerText = "❌ Beurk ! Essaie encore !";
+
+                if (elementEtiquette) {
+                    elementEtiquette.classList.add('incorrect');
+                    setTimeout(() => {
+                        elementEtiquette.classList.remove('incorrect');
+                    }, 400);
+                }
+            }
+        }
+
+        function permettreDepot(e) {
+            e.preventDefault();
+            permettreDepotVisual();
+        }
+
+        function permettreDepotVisual() {
+            document.getElementById('monstre').classList.add('hovered');
+            document.getElementById('bouche').setAttribute('d', 'M 60,115 Q 100,175 140,115 Q 100,125 60,115 Z');
+        }
+
+        function retirerSurbrillance() {
+            retirerSurbrillanceVisual();
+        }
+
+        function retirerSurbrillanceVisual() {
+            document.getElementById('monstre').classList.remove('hovered');
+            if (!tentativeReussie) {
+                document.getElementById('bouche').setAttribute('d', 'M 65,125 Q 100,155 135,125 Q 100,135 65,125 Z');
+            }
+        }
+
+        function deposerMot(e) {
+            e.preventDefault();
+            retirerSurbrillanceVisual();
+            const motGlisse = e.dataTransfer.getData('text/plain');
+            
+            const etiquettes = document.querySelectorAll('.etiquette');
+            let elemTrouve = null;
+            etiquettes.forEach(el => {
+                if (el.dataset.motBrut === motGlisse) elemTrouve = el;
+            });
+
+            verifierMot(motGlisse, elemTrouve);
+        }
+
+        // --- ESPACE ENSEIGNANT ---
+        function toggleTeacherPanel() {
+            const panel = document.getElementById('teacherPanel');
+            panel.classList.toggle('active');
+            if (panel.classList.contains('active')) {
+                remplirTableauEditeur();
+            }
+        }
+
+        function changerPolice() {
+            const choix = document.getElementById('selectPolice').value;
+            const root = document.documentElement;
+
+            if (choix === 'Script') {
+                root.style.setProperty('--font-active', "'Open Sans', sans-serif");
+            } else if (choix === 'MAJUSCULE') {
+                root.style.setProperty('--font-active', "'Open Sans', sans-serif");
+            }
+
+            const etiquettes = document.querySelectorAll('.etiquette');
+            etiquettes.forEach(el => {
+                el.innerText = formatterMotSelonPolice(el.dataset.motBrut);
+            });
+        }
+
+        function formatterMotSelonPolice(mot) {
+            const choix = document.getElementById('selectPolice').value;
+            if (choix === 'MAJUSCULE') {
+                return mot.toUpperCase();
+            }
+            return mot.toLowerCase();
+        }
+
+        function sauvegarderParametres() {
+            const inputVal = parseInt(document.getElementById('nbQuestionsInput').value, 10);
+            if (inputVal && inputVal > 0) {
+                nbQuestionsSouhaitees = inputVal;
+                sauvegarderEnMemoire();
+            }
+        }
+
+        function remplirTableauEditeur() {
+            const tbody = document.getElementById('tbodyMots');
+            tbody.innerHTML = '';
+            
+            document.getElementById('totalMotsCompteur').innerText = banqueMots.length;
+
+            banqueMots.forEach((niv, idx) => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="text" value="${niv.options[0] || niv.cible}" id="opt0_${idx}"></td>
+                    <td><input type="text" value="${niv.options[1] || ''}" id="opt1_${idx}"></td>
+                    <td><input type="text" value="${niv.options[2] || ''}" id="opt2_${idx}"></td>
+                    <td><input type="text" placeholder="Optionnel" value="${niv.audioText || ''}" id="audioText_${idx}"></td>
+                    <td style="text-align:center;"><button onclick="supprimerLigne(${idx})" style="border:none; background:none; cursor:pointer;">❌</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function ajouterLigneMot() {
+            banqueMots.push({ cible: "Nouveau", audioText: "", options: ["Nouveau", "Option2", "Option3"] });
+            remplirTableauEditeur();
+        }
+
+        function supprimerLigne(idx) {
+            banqueMots.splice(idx, 1);
+            remplirTableauEditeur();
+        }
+
+        function sauvegarderMotsEditeur() {
+            let nouveauxMots = [];
+            for (let i = 0; i < banqueMots.length; i++) {
+                let opt0 = document.getElementById(`opt0_${i}`).value.trim();
+                let opt1 = document.getElementById(`opt1_${i}`).value.trim();
+                let opt2 = document.getElementById(`opt2_${i}`).value.trim();
+                let audioText = document.getElementById(`audioText_${i}`).value.trim();
+
+                if (opt0) {
+                    nouveauxMots.push({
+                        cible: opt0,
+                        audioText: audioText,
+                        options: [opt0, opt1, opt2].filter(o => o !== "")
+                    });
+                }
+            }
+
+            if (nouveauxMots.length > 0) {
+                banqueMots = nouveauxMots;
+                sauvegarderParametres();
+                sauvegarderEnMemoire();
+                alert("✅ Modifications enregistrées !");
+                toggleTeacherPanel();
+                preparerSessionJeu();
+            } else {
+                alert("Veuillez saisir au moins un mot valide.");
+            }
+        }
+
+        function chargerFichier(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const extension = file.name.split('.').pop().toLowerCase();
+
+            if (extension === 'json') {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        validerEtChargerMots(data);
+                    } catch (err) {
+                        alert("Erreur JSON.");
+                    }
+                };
+                reader.readAsText(file);
+            } else if (extension === 'xlsx' || extension === 'xls') {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const data = new Uint8Array(event.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                        const nouveauxNiveaux = jsonData.map(row => {
+                            let reponseCorrecte = String(row.Reponse_Correcte || row.Mot_Cible || row.Option_1 || "").trim();
+                            return {
+                                cible: reponseCorrecte,
+                                audioText: String(row.Enonciation_Phonetique || row.Audio_Text || "").trim(),
+                                options: [
+                                    reponseCorrecte,
+                                    String(row.Piege_1 || row.Option_2 || "").trim(),
+                                    String(row.Piege_2 || row.Option_3 || "").trim()
+                                ].filter(o => o !== "")
+                            };
+                        });
+
+                        validerEtChargerMots(nouveauxNiveaux);
+                    } catch (err) {
+                        alert("Erreur Excel.");
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function validerEtChargerMots(donnees) {
+            if (Array.isArray(donnees) && donnees.length > 0 && donnees[0].cible) {
+                banqueMots = donnees;
+                sauvegarderEnMemoire();
+                alert(`✅ ${banqueMots.length} mots chargés !`);
+                if (document.getElementById('teacherPanel').classList.contains('active')) {
+                    remplirTableauEditeur();
+                }
+                preparerSessionJeu();
+            } else {
+                alert("Format incorrect.");
+            }
+        }
+
+        function exporterJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(banqueMots, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "mots_monstre_cycle1.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function telechargerModeleExcel() {
+            const modele = [
+                { Reponse_Correcte: "Chat", Piege_1: "Vélo", Piege_2: "Lune", Enonciation_Phonetique: "" },
+                { Reponse_Correcte: "Oiseau", Piege_1: "Nuage", Piege_2: "Pluie", Enonciation_Phonetique: "Wa zo" }
+            ];
+            const ws = XLSX.utils.json_to_sheet(modele);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Mots");
+            XLSX.writeFile(wb, "modele_mots_monstre.xlsx");
+        }
+
+        window.onload = () => { initialiserDonnees(); };
+    </script>
+</body>
+</html>
